@@ -2,24 +2,40 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Libro 3D Curvado - Three.js</title>
 <style>
-  html,body { height:100%; margin:0; background:#f7efe3; font-family: Georgia, "Times New Roman", serif; }
-  #container { width:100%; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  canvas { display:block; }
-
-  /* Páginas originales (fuente de textura). Oculto */
-  #page-source { position:fixed; left:-9999px; top:-9999px; visibility:hidden; }
-  .page { width: 800px; height: 500px; box-sizing:border-box; background:white; padding:30px; font-size:18px; line-height:1.6; }
-  .cover h1 { color:#c2185b; font-size:28px; margin:0 0 10px; text-align:center; }
-  .final-page img { max-width:70%; display:block; margin:12px auto; }
-
-  /* UI */
-  #ui { position: fixed; right: 18px; bottom: 18px; display:flex; gap:8px; z-index: 20; }
+  html, body {
+    height: 100%; margin: 0; background: #f7efe3;
+    font-family: Georgia, "Times New Roman", serif;
+    overflow: hidden;
+  }
+  #container {
+    width: 100%; height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* Oculto las páginas fuente */
+  #page-source {
+    position: fixed; left: -9999px; top: -9999px; visibility: hidden;
+    width: 800px; height: 500px; padding: 30px; background: white;
+    box-sizing: border-box; font-size: 18px; line-height: 1.6;
+  }
+  .cover h1 {
+    color: #c2185b; font-size: 28px; margin: 0 0 10px; text-align: center;
+  }
+  .final-page img {
+    max-width: 70%; display: block; margin: 12px auto;
+  }
+  /* Botones UI */
+  #ui {
+    position: fixed; right: 18px; bottom: 18px;
+    display: flex; gap: 8px; z-index: 20;
+  }
   .btn {
-    background: #fff; border-radius:8px; padding:8px 12px; box-shadow:0 2px 8px rgba(0,0,0,0.18);
-    cursor:pointer; user-select:none;
+    background: #fff; border-radius: 8px; padding: 8px 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    cursor: pointer; user-select: none;
+    font-weight: bold;
   }
 </style>
 </head>
@@ -27,7 +43,6 @@
 
 <div id="container"></div>
 
-<!-- Fuente: tus páginas (ocultas) -->
 <div id="page-source">
   <div class="page cover">
     <h1>💌 Feliz 10 meses amor...</h1>
@@ -45,14 +60,11 @@
   </div>
 
   <div class="page final-page">
-    <img src="./62b22f0d-d406-4bfa-af30-7add598e73d9.jpg" alt="Snoopy adorable">
-    <p>
-      No hayas pensado que eso puede decirme que sos una mala persona o que te ame menos por lo que pasó...
-    </p>
+    <img src="https://i.imgur.com/62b22f0d.jpg" alt="Snoopy adorable" />
+    <p>No hayas pensado que eso puede decirme que sos una mala persona o que te ame menos por lo que pasó...</p>
   </div>
 </div>
 
-<!-- UI -->
 <div id="ui">
   <div class="btn" id="prevBtn">◀ Anterior</div>
   <div class="btn" id="nextBtn">Siguiente ▶</div>
@@ -65,31 +77,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <script>
-/*
-  Implementación:
-  - Cada página usa la misma geometría subdividida (widthSegments controls suavidad).
-  - En la animación de flip se interpola un "progress" 0->1 y deformamos vértices
-    en función de su distancia al lomo (hinge), aplicando una curva tipo "curl".
-  - BackFace es una segunda malla que comparte la geometría para mantener sincronía.
-*/
-
 (async () => {
-
-  // ---- 1) Capturar páginas como imágenes (texturas) ----
-  const pageDivs = Array.from(document.querySelectorAll('#page-source .page'));
+  // Captura las páginas como texturas (2x escala para nitidez)
+  const pageDivs = [...document.querySelectorAll('#page-source .page')];
   const pageImgs = [];
-  for (let i=0;i<pageDivs.length;i++){
-    // render a escala 2 para mejor nitidez
-    const canvas = await html2canvas(pageDivs[i], {width:800, height:500, scale:2, backgroundColor:null});
+  for (const div of pageDivs) {
+    const canvas = await html2canvas(div, { width: 800, height: 500, scale: 2, backgroundColor: null });
     pageImgs.push(canvas.toDataURL('image/png'));
   }
 
-  // ---- 2) Three.js setup ----
   const container = document.getElementById('container');
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf7efe3);
 
-  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(window.devicePixelRatio || 1);
   container.appendChild(renderer.domElement);
@@ -100,50 +101,41 @@
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
   controls.enablePan = false;
   controls.minDistance = 300; controls.maxDistance = 900;
-  controls.maxPolarAngle = Math.PI/2.3;
+  controls.maxPolarAngle = Math.PI / 2.3;
 
-  // luces
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85); hemi.position.set(0,200,0); scene.add(hemi);
-  const dir = new THREE.DirectionalLight(0xffffff, 0.6); dir.position.set(120,200,120); scene.add(dir);
+  const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.85);
+  hemiLight.position.set(0, 200, 0);
+  scene.add(hemiLight);
 
-  // libro grupo
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+  dirLight.position.set(120, 200, 120);
+  scene.add(dirLight);
+
   const book = new THREE.Group();
   scene.add(book);
 
-  // parámetros de mapa físico vs escena
-  const PAGE_PIXEL_W = 800, PAGE_PIXEL_H = 500;
-  // tamaño visual en la escena (ajusta para estética)
   const PAGE_W = 200;
-  const PAGE_H = PAGE_W * (PAGE_PIXEL_H / PAGE_PIXEL_W); // mantén proporción
-  const WIDTH_SEGMENTS = 60; // <--- subdivisiones horizontales (suavidad de curvado)
+  const PAGE_H = PAGE_W * (500 / 800);
+  const WIDTH_SEGMENTS = 60;
   const HEIGHT_SEGMENTS = 1;
 
-  // Texturas
   const loader = new THREE.TextureLoader();
   const textures = pageImgs.map(src => loader.load(src));
 
-  // ---- 3) Geometría subdividida (shared) ----
-  // Crearemos una geometría centrada en 0,0, luego la "ajustamos" para pivot en el lomo:
   const geom = new THREE.PlaneGeometry(PAGE_W, PAGE_H, WIDTH_SEGMENTS, HEIGHT_SEGMENTS);
-
-  // SHIFT: queremos que el lomo (hinge) esté en la X = -PAGE_W/2
-  // Para facilitar cálculos guardamos la posición original de vértices
   const posAttr = geom.attributes.position;
   const vertexCount = posAttr.count;
   const original = new Float32Array(vertexCount * 3);
-  for (let i=0;i<vertexCount;i++){
-    original[i*3+0] = posAttr.getX(i);
-    original[i*3+1] = posAttr.getY(i);
-    original[i*3+2] = posAttr.getZ(i);
+  for (let i = 0; i < vertexCount; i++) {
+    original[i * 3 + 0] = posAttr.getX(i);
+    original[i * 3 + 1] = posAttr.getY(i);
+    original[i * 3 + 2] = posAttr.getZ(i);
   }
 
-  // ---- 4) Crear páginas (front + back meshes) ----
   const pages = [];
-  for (let i=0;i<textures.length;i++){
-    // material frontal y posterior
+  for (let i = 0; i < textures.length; i++) {
     const matFront = new THREE.MeshPhongMaterial({ map: textures[i], side: THREE.FrontSide, shininess: 5 });
-    // Para la cara trasera, usamos la textura de la página anterior (si existe), sino blanco
-    const backTex = (i-1 >= 0) ? textures[i-1] : null;
+    const backTex = (i - 1 >= 0) ? textures[i - 1] : null;
     const matBack = new THREE.MeshPhongMaterial({
       map: backTex || null,
       color: backTex ? 0xffffff : 0xf8f5f2,
@@ -151,96 +143,69 @@
       shininess: 3
     });
 
-    // dos meshes que comparten la misma geometría (para que la deformación afecte a ambas)
     const frontMesh = new THREE.Mesh(geom, matFront);
-    const backMesh  = new THREE.Mesh(geom, matBack);
-
-    // back face: se voltea para que muestre su textura mirando al otro lado
+    const backMesh = new THREE.Mesh(geom, matBack);
     backMesh.rotation.y = Math.PI;
-    backMesh.position.z = 0.001; // evitar z-fighting
+    backMesh.position.z = 0.001;
 
-    // Grupo contenedor para pivotar en el lomo (izquierda)
     const holder = new THREE.Group();
-    // Para pivot en left edge: desplazamos el mesh hacia la derecha PAGE_W/2
     frontMesh.position.x = PAGE_W / 2;
-    backMesh.position.x  = PAGE_W / 2;
+    backMesh.position.x = PAGE_W / 2;
     holder.add(frontMesh);
     holder.add(backMesh);
 
-    // Posicionar el holder en el lomo (x = -PAGE_W/2 + offset por índice)
     const stackOffset = i * 0.35;
-    holder.position.x = -PAGE_W/2 + stackOffset;
-    holder.position.y = -6; // estética
+    holder.position.x = -PAGE_W / 2 + stackOffset;
+    holder.position.y = -6;
     holder.position.z = -i * 0.06;
 
     book.add(holder);
     pages.push({ holder, frontMesh, backMesh, index: i, progress: 0, flipping: false });
   }
 
-  // estética: rotar libro ligeramente
   book.rotation.y = 0.06;
 
-  // ---- 5) Funciones de deformación (curl) ----
-  // Guardamos el bounding para calcular 'u' (0..1) a lo largo de la anchura de la página
-  const leftX = -PAGE_W/2;
-  const rightX = PAGE_W/2;
+  const leftX = -PAGE_W / 2;
+  const rightX = PAGE_W / 2;
   const width = rightX - leftX;
+  const originalPositions = original;
 
-  // copia original para restaurar
-  const originalPositions = original; // alias
-
-  // deformar la geometría en base a progress (0..1) y direction ('next' o 'prev')
   function deformGeometry(progress, direction = 'next') {
-    // progress: 0 = plana, 1 = totalmente volteada
     const p = THREE.MathUtils.clamp(progress, 0, 1);
-    const sign = (direction === 'next') ? -1 : 1; // next: rot hacia -y
+    const sign = (direction === 'next') ? -1 : 1;
 
-    // parámetros para curvado
-    const curlStrength = 1.75;     // controla cuánto se curva la hoja
-    const liftAmount = 18;         // cuanto se levanta del eje durante el movimiento
-    const foldPos = 0.35 + 0.55 * p; // posición del "pliegue" relativa (0..1) desde el lomo
+    const curlStrength = 1.75;
+    const liftAmount = 18;
+    const foldPos = 0.35 + 0.55 * p;
 
-    // easing para suavizar la animación
-    const ease = t => t<0.5 ? 2*t*t : -1 + (4-2*t)*t;
+    const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     const ep = ease(p);
 
-    // actualizar cada vértice
     const pos = geom.attributes.position;
     for (let i = 0; i < vertexCount; i++) {
-      const ox = originalPositions[i*3+0];
-      const oy = originalPositions[i*3+1];
-      const oz = originalPositions[i*3+2];
+      const ox = originalPositions[i * 3 + 0];
+      const oy = originalPositions[i * 3 + 1];
+      const oz = originalPositions[i * 3 + 2];
 
-      // u = distancia desde el lomo en porcentaje (0 en lomo, 1 en borde exterior)
-      const localX = ox - leftX; // (0..width)
+      const localX = ox - leftX;
       const u = localX / width;
 
-      // Si volteamos 'next' (hoja derecha a izquierda), el lomo está a la izquierda (u small)
-      // generamos curva que depende de la distancia al pliegue (foldPos)
       const distToFold = Math.abs(u - foldPos);
-      // factor que atenúa curvado en regiones lejos del pliegue
       const falloff = Math.exp(-Math.pow(distToFold * 6.0, 2));
 
-      // curvatura base (seno en función de u para forma suave)
-      const angle = ep * Math.PI * curlStrength; // ángulo global
-      // Desplazamiento z: la hoja se dobla hacia +z o -z según dirección
-      const zCurl = Math.sin((u) * Math.PI) * angle * 6 * falloff * sign;
-      // Elevación y (para dar sensación de 'levantamiento' en el centro del curl)
+      const angle = ep * Math.PI * curlStrength;
+      const zCurl = Math.sin(u * Math.PI) * angle * 6 * falloff * sign;
       const yLift = Math.sin(ep * Math.PI) * liftAmount * Math.sin(u * Math.PI) * falloff;
 
-      // rotación parcial alrededor del eje vertical del pliegue (aplicada como desplazamiento x/z).
-      // Aproximación: rotamos el punto alrededor de una línea vertical en la posición del pliegue
-      // calculamos distancia angular local para simular rotación
       const foldX = leftX + foldPos * width;
       const relX = ox - foldX;
-      const rotLocal = ep * Math.PI * 0.99 * Math.exp(-u*3.2) * sign; // rotación local suavizada
+      const rotLocal = ep * Math.PI * 0.99 * Math.exp(-u * 3.2) * sign;
       const cosR = Math.cos(rotLocal), sinR = Math.sin(rotLocal);
       const rx = relX * cosR - zCurl * sinR;
       const rz = relX * sinR + zCurl * cosR;
 
-      // reconstruimos posición final
       const finalX = foldX + rx;
-      const finalY = oy + yLift * (1 - u*0.2); // menos lift cerca del borde
+      const finalY = oy + yLift * (1 - u * 0.2);
       const finalZ = rz;
 
       pos.setXYZ(i, finalX, finalY, finalZ);
@@ -250,31 +215,23 @@
     geom.attributes.normal.needsUpdate = true;
   }
 
-  // ---- 6) Flip controls / animación ----
   let currentIndex = 0;
   const maxIndex = pages.length - 1;
-  let animState = null;
 
-  // helper anim: animates progress of a page
-  function animateFlip(pageObj, toProgress, duration=600, direction='next', cb) {
-    if (pageObj.flipping) return; // no stackear flips de la misma página
+  function animateFlip(pageObj, toProgress, duration = 600, direction = 'next', cb) {
+    if (pageObj.flipping) return;
     pageObj.flipping = true;
     const from = pageObj.progress || 0;
     const start = performance.now();
 
-    function frame(now){
+    function frame(now) {
       const t = Math.min(1, (now - start) / duration);
-      // easeInOutCubic
-      const ease = t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const prog = from + (toProgress - from) * ease;
-      // Aplicar deformación al mesh compartido
       deformGeometry(prog, direction);
-      // rotación global del holder para mejorar la ilusión:
-      // rot around Y proportional to prog
       const holder = pageObj.holder;
-      holder.rotation.y = (direction==='next') ? -Math.PI * prog * 0.99 : -Math.PI * (prog-1) * 0.99;
-      // sutil elevación
-      holder.position.y = -6 + Math.sin(prog*Math.PI) * 6;
+      holder.rotation.y = (direction === 'next') ? -Math.PI * prog * 0.99 : -Math.PI * (prog - 1) * 0.99;
+      holder.position.y = -6 + Math.sin(prog * Math.PI) * 6;
 
       renderer.render(scene, camera);
       if (t < 1) requestAnimationFrame(frame);
@@ -287,73 +244,64 @@
     requestAnimationFrame(frame);
   }
 
-  // función para pasar página hacia adelante (next)
-  function goNext(){
+  function goNext() {
     if (currentIndex >= maxIndex) return;
     const pageObj = pages[currentIndex];
-    // flip this page from 0 -> 1
     animateFlip(pageObj, 1, 700, 'next', () => {
-      // al final, incrementamos index y "reset" geometría plana (para siguiente flips)
       currentIndex++;
-      // restaurar geometría a plana (no deformada) para la nueva página
-      // restauramos posiciones originales
       const p = geom.attributes.position;
-      for (let i=0;i<vertexCount;i++){
-        p.setXYZ(i, originalPositions[i*3+0], originalPositions[i*3+1], originalPositions[i*3+2]);
+      for (let i = 0; i < vertexCount; i++) {
+        p.setXYZ(i, originalPositions[i * 3 + 0], originalPositions[i * 3 + 1], originalPositions[i * 3 + 2]);
       }
       p.needsUpdate = true;
       geom.computeVertexNormals();
-      // reorden estético Z
-      for (let i=0;i<pages.length;i++){ pages[i].holder.position.z = -Math.abs(i - currentIndex) * 0.06; }
+      for (let i = 0; i < pages.length; i++) {
+        pages[i].holder.position.z = -Math.abs(i - currentIndex) * 0.06;
+      }
     });
   }
 
-  // función para ir atrás (prev)
-  function goPrev(){
+  function goPrev() {
     if (currentIndex <= 0) return;
-    // la página a "desvoltear" es currentIndex-1 (porque está volteada)
-    const pageObj = pages[currentIndex-1];
-    // animamos de 1 -> 0 con dirección 'prev'
+    const pageObj = pages[currentIndex - 1];
     animateFlip(pageObj, 0, 700, 'prev', () => {
       currentIndex--;
-      // restaurar geometría a plana
       const p = geom.attributes.position;
-      for (let i=0;i<vertexCount;i++){
-        p.setXYZ(i, originalPositions[i*3+0], originalPositions[i*3+1], originalPositions[i*3+2]);
+      for (let i = 0; i < vertexCount; i++) {
+        p.setXYZ(i, originalPositions[i * 3 + 0], originalPositions[i * 3 + 1], originalPositions[i * 3 + 2]);
       }
       p.needsUpdate = true;
       geom.computeVertexNormals();
-      for (let i=0;i<pages.length;i++){ pages[i].holder.position.z = -Math.abs(i - currentIndex) * 0.06; }
+      for (let i = 0; i < pages.length; i++) {
+        pages[i].holder.position.z = -Math.abs(i - currentIndex) * 0.06;
+      }
     });
   }
 
-  // botones
   document.getElementById('nextBtn').addEventListener('click', goNext);
   document.getElementById('prevBtn').addEventListener('click', goPrev);
-  document.getElementById('resetBtn').addEventListener('click', ()=> {
-    // devolver a portada
-    const loop = () => { if (currentIndex>0) { goPrev(); setTimeout(loop, 250); } };
-    loop();
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    while (currentIndex > 0) {
+      goPrev();
+    }
   });
 
-  // zone click / swipe
-  renderer.domElement.addEventListener('click', (e) => {
+  renderer.domElement.addEventListener('click', e => {
     const w = renderer.domElement.clientWidth;
     if (e.clientX < w * 0.35) goPrev();
     else if (e.clientX > w * 0.65) goNext();
   });
-  // swipe
+
   let sx = null;
-  renderer.domElement.addEventListener('touchstart', (e)=> { sx = e.touches[0].clientX; }, {passive:true});
-  renderer.domElement.addEventListener('touchend', (e)=> {
-    if (sx===null) return;
+  renderer.domElement.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true });
+  renderer.domElement.addEventListener('touchend', e => {
+    if (sx === null) return;
     const dx = e.changedTouches[0].clientX - sx;
     if (dx < -30) goNext();
     else if (dx > 30) goPrev();
     sx = null;
-  }, {passive:true});
+  }, { passive: true });
 
-  // ---- 7) loop render ----
   function animate() {
     requestAnimationFrame(animate);
     controls.update();
@@ -361,16 +309,14 @@
   }
   animate();
 
-  // resize
-  window.addEventListener('resize', ()=> {
+  window.addEventListener('resize', () => {
     const W = container.clientWidth, H = container.clientHeight;
-    camera.aspect = W/H; camera.updateProjectionMatrix();
-    renderer.setSize(W,H);
+    camera.aspect = W / H; camera.updateProjectionMatrix();
+    renderer.setSize(W, H);
   });
 
   console.log("Libro 3D curvado listo. Páginas:", pages.length);
-
-})(); // end IIFE
+})();
 </script>
 
 </body>
